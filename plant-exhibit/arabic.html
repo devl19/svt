@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>معرض النباتات وتشريحها</title>
+  <meta name="description" content="اكتشف معرضًا تفاعليًا للنباتات، تشريحها، ونصائح للعناية بها.">
+  <meta name="keywords" content="نباتات, نبات, تشريح, معرض, زهور, بستنة">
+  <link rel="icon" href="rdf.png" type="image/png">
+  <link rel="stylesheet" href="styles/main.css">
+  <style>
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px; }
+    .card { background: var(--card-bg, #fff); border-radius: 12px; box-shadow: 0 2px 8px #0001; padding: 12px; cursor: pointer; transition: transform .2s; }
+    .card:focus { outline: 2px solid #0078d4; }
+    .card img { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; }
+    .favorite { color: #e63946; font-size: 1.5em; cursor: pointer; float: left; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .modal { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#0008; align-items:center; justify-content:center; z-index:1000; }
+    .modal-content { background:#fff; border-radius:16px; padding:24px; max-width:400px; width:90%; position:relative; }
+    .modal-close { position:absolute; top:8px; left:12px; font-size:1.5em; cursor:pointer; background:none; border:none; }
+    body.dark { background:#181818; color:#eee; }
+    body.dark .card { background:#232323; }
+    body.dark .modal-content { background:#232323; color:#eee; }
+    .sr-only { position:absolute; right:-9999px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div style="display:flex; align-items:center; gap:16px;">
+        <img src="rdf.png" alt="شعار الموقع" style="height:80px; width:auto; border-radius:12px;">
+        <h1>معرض النباتات وتشريحها</h1>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button id="btn-mode" class="btn-mode" title="الوضع الليلي/النهاري" aria-label="الوضع الليلي/النهاري">🌙</button>
+        <button id="btn-fr" class="btn-lang" aria-label="النسخة الفرنسية">Français</button>
+      </div>
+    </header>
+    <nav>
+      <a href="#cards-view">الرئيسية</a> |
+      <a href="#about">حول</a> |
+      <a href="#favorites">المفضلة</a>
+    </nav>
+    <section id="cards-view" class="page-background">
+      <h2>ابحث عن نبتة:</h2>
+      <form id="search-form" autocomplete="off" style="margin-bottom:12px;">
+        <label for="search-input" class="sr-only">اسم النبتة</label>
+        <input id="search-input" type="search" placeholder="ابحث عن اسم النبتة..." aria-label="ابحث عن اسم النبتة">
+        <select id="filter-type" aria-label="تصفية حسب النوع">
+          <option value="exposition">عرض</option>
+          <option value="anatomie">تشريح</option>
+        </select>
+      </form>
+      <div class="grid" id="plant-grid"></div>
+    </section>
+
+    <!-- نافذة التفاصيل -->
+    <div class="modal" id="plant-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-content">
+        <button class="modal-close" id="modal-close" aria-label="إغلاق">×</button>
+        <h2 id="modal-title"></h2>
+        <img id="modal-img" src="" alt="" style="width:100%;border-radius:8px;">
+        <p id="modal-desc"></p>
+        <p><strong>النوع:</strong> <span id="modal-type"></span></p>
+        <p><strong>نصيحة:</strong> <span id="modal-tips"></span></p>
+      </div>
+    </div>
+
+    <!-- المفضلة -->
+    <section id="favorites" class="page-background" style="display:none;">
+      <h2>نباتاتك المفضلة</h2>
+      <div class="grid" id="favorites-grid"></div>
+    </section>
+
+    <!-- حول -->
+    <section id="about" class="page-background">
+      <h2>حول الموقع</h2>
+      <p>يقدم هذا الموقع مجموعة مختارة من النباتات وتشريحها، لاكتشاف تنوع العالم النباتي وتعلم كيفية العناية بها.</p>
+    </section>
+
+    <!-- تواصل -->
+    <section id="contact" class="page-background">
+      <h2>تواصل معنا</h2>
+      <form>
+        <label for="contact-name">الاسم:</label>
+        <input id="contact-name" type="text" required>
+        <label for="contact-msg">رسالتك:</label>
+        <textarea id="contact-msg" required></textarea>
+        <button type="submit">إرسال</button>
+      </form>
+    </section>
+  </div>
+  <script>
+    const plants = [
+      { name: "وردة", img: "A.jpeg", type: "زهرة", desc: "الوردة زهرة رمزية، ترمز للحب.", tips: "اسقها بانتظام وتحب الشمس." },
+      { name: "توليب", img: "T.jpeg", type: "زهرة", desc: "التوليب زهرة ربيعية ملونة.", tips: "تزرع في الخريف وتحب التربة الجافة." },
+      { name: "أوركيد", img: "E.jpeg", type: "زهرة", desc: "الأوركيد نبتة أنيقة وحساسة.", tips: "تجنب كثرة الماء، ضوء غير مباشر." },
+      { name: "زنبق", img: "lys.jpeg", type: "زهرة", desc: "الزنبق زهرة فخمة وعطرة.", tips: "تربة غنية، شمس مباشرة." },
+      { name: "أقحوان", img: "marguerite.jpeg", type: "زهرة", desc: "الأقحوان يرمز للبراءة والنقاء.", tips: "تربة خفيفة، شمس." },
+      { name: "دوار الشمس", img: "tournesol.jpeg", type: "زهرة", desc: "دوار الشمس يتبع ضوء الشمس.", tips: "يحب الدفء، سقي معتدل." },
+      { name: "بنفسج", img: "violette.jpeg", type: "زهرة", desc: "البنفسج زهرة صغيرة وعطرة.", tips: "ظل جزئي، تربة رطبة." },
+      { name: "فاوانيا", img: "pivoine.jpeg", type: "زهرة", desc: "الفاوانيا مشهورة بأزهارها الكبيرة.", tips: "تربة غنية، سقي معتدل." },
+      { name: "كاميليا", img: "camelia.jpeg", type: "زهرة", desc: "الكاميليا تزهر شتاءً أو ربيعاً.", tips: "تربة حمضية، ظل جزئي." },
+      { name: "ياسمين", img: "jasmin.jpeg", type: "زهرة", desc: "الياسمين متسلق عطري جداً.", tips: "يحب الدفء والضوء." },
+      { name: "لافندر", img: "lavande.jpeg", type: "زهرة", desc: "اللافندر نبتة عطرية متوسطية.", tips: "تربة جافة، شمس كاملة." },
+      { name: "خشخاش", img: "coquelicot.jpeg", type: "زهرة", desc: "الخشخاش يلون الحقول بالأحمر.", tips: "تربة فقيرة، شمس." },
+      { name: "داليا", img: "dahlia.jpeg", type: "زهرة", desc: "الداليا متنوعة الأشكال والألوان.", tips: "تزرع بعد الصقيع، شمس." },
+      { name: "كركديه", img: "hibiscus.jpeg", type: "زهرة", desc: "الكركديه زهرة استوائية رائعة.", tips: "سقي منتظم، يحب الدفء." },
+      { name: "شقائق النعمان", img: "anemone.jpeg", type: "زهرة", desc: "شقائق النعمان زهرة رقيقة.", tips: "تربة رطبة، ظل جزئي." },
+      { name: "سوسن", img: "iris.jpeg", type: "زهرة", desc: "السوسن زهرة أنيقة متعددة الألوان.", tips: "تربة جيدة التصريف، شمس أو ظل جزئي." },
+      { name: "نرجس", img: "narcisse.jpeg", type: "زهرة", desc: "النرجس يضيء الحدائق في الربيع.", tips: "تزرع في الخريف، تحب الشمس." },
+      { name: "أزاليا", img: "azalee.jpeg", type: "زهرة", desc: "الأزاليا تزهر بغزارة في الربيع.", tips: "تربة حمضية، سقي معتدل." },
+      { name: "سيكلامين", img: "cyclamen.jpeg", type: "زهرة", desc: "السيكلامين يزهر خريفاً وشتاءً.", tips: "تربة باردة، ظل خفيف." },
+      { name: "فريزيا", img: "freesia.jpeg", type: "زهرة", desc: "الفريزيا معروفة بعطرها الرقيق.", tips: "تربة خفيفة، شمس." },
+      { name: "جلاديولس", img: "glaieul.jpeg", type: "زهرة", desc: "الجلاديولس معروف بساقه الطويلة.", tips: "تربة خفيفة، شمس." },
+      { name: "هورتنسيا", img: "hortensia.jpeg", type: "زهرة", desc: "الهورتنسيا تعطي كرات زهرية كبيرة.", tips: "تربة حمضية، ظل جزئي." },
+      { name: "ماغنوليا", img: "magnolia.jpeg", type: "زهرة", desc: "الماغنوليا تزهر بشكل رائع في الربيع.", tips: "تربة غنية، شمس." },
+      { name: "لا تنساني", img: "myosotis.jpeg", type: "زهرة", desc: "لا تنساني زهرة زرقاء صغيرة ترمز للذكرى.", tips: "تربة رطبة، ظل جزئي." },
+      { name: "بريموفير", img: "primevere.jpeg", type: "زهرة", desc: "البريموفير تبشر بقدوم الربيع.", tips: "تربة رطبة، شمس أو ظل جزئي." },
+      { name: "شقائق", img: "renoncule.jpeg", type: "زهرة", desc: "الشقائق تقدم أزهاراً مزدوجة ملونة.", tips: "تربة غنية، سقي منتظم." }
+    ];
+    function renderPlants(list, gridId) {
+      const grid = document.getElementById(gridId);
+      grid.innerHTML = '';
+      const favs = getFavorites();
+      list.forEach((plant, i) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.tabIndex = 0;
+        card.setAttribute('data-index', i);
+        card.innerHTML = `
+          <span class="favorite" title="إضافة إلى المفضلة" aria-label="مفضل" data-fav="${plant.name}">${favs.includes(plant.name) ? '★' : '☆'}</span>
+          <img src="${plant.img}" alt="${plant.name}">
+          <h2>${plant.name}</h2>
+        `;
+        card.onclick = () => showModal(plant);
+        card.onkeydown = e => { if (e.key === 'Enter') showModal(plant); };
+        card.querySelector('.favorite').onclick = (e) => {
+          e.stopPropagation();
+          toggleFavorite(plant.name);
+          renderPlants(list, gridId);
+        };
+        grid.appendChild(card);
+      });
+    }
+    document.getElementById('filter-type').onchange = function() {
+      const val = this.value;
+      if (val === "anatomie") {
+        window.location.href = "anatomie.ar.html";
+      } else {
+        filterPlants();
+      }
+    };
+    function filterPlants() {
+      const q = document.getElementById('search-input').value.toLowerCase();
+      renderPlants(
+        plants.filter(p => p.name.toLowerCase().includes(q)),
+        'plant-grid'
+      );
+    }
+    function showModal(plant) {
+      document.getElementById('modal-title').textContent = plant.name;
+      document.getElementById('modal-img').src = plant.img;
+      document.getElementById('modal-img').alt = plant.name;
+      document.getElementById('modal-desc').textContent = plant.desc;
+      document.getElementById('modal-type').textContent = plant.type;
+      document.getElementById('modal-tips').textContent = plant.tips;
+      document.getElementById('plant-modal').style.display = 'flex';
+      document.getElementById('modal-close').focus();
+    }
+    document.getElementById('modal-close').onclick = () => {
+      document.getElementById('plant-modal').style.display = 'none';
+    };
+    window.onclick = e => {
+      if (e.target === document.getElementById('plant-modal')) {
+        document.getElementById('plant-modal').style.display = 'none';
+      }
+    };
+    function getFavorites() {
+      return JSON.parse(localStorage.getItem('favorites_ar') || '[]');
+    }
+    function toggleFavorite(name) {
+      let favs = getFavorites();
+      if (favs.includes(name)) favs = favs.filter(f => f !== name);
+      else favs.push(name);
+      localStorage.setItem('favorites_ar', JSON.stringify(favs));
+      renderFavorites();
+    }
+    function renderFavorites() {
+      const favs = getFavorites();
+      const favPlants = plants.filter(p => favs.includes(p.name));
+      renderPlants(favPlants, 'favorites-grid');
+    }
+    document.querySelectorAll('nav a').forEach(link => {
+      link.onclick = function(e) {
+        e.preventDefault();
+        document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+        if (this.getAttribute('href') === '#favorites') renderFavorites();
+        document.querySelector(this.getAttribute('href')).style.display = '';
+        window.scrollTo(0,0);
+      };
+    });
+    const modeBtn = document.getElementById('btn-mode');
+    function setMode(dark) {
+      document.body.classList.toggle('dark', dark);
+      modeBtn.textContent = dark ? '☀️' : '🌙';
+      localStorage.setItem('theme_ar', dark ? 'dark' : 'light');
+    }
+    setMode(localStorage.getItem('theme_ar') === 'dark');
+    modeBtn.onclick = () => setMode(!document.body.classList.contains('dark'));
+    document.getElementById('btn-fr').onclick = function() {
+      window.location.href = 'FR.html';
+    };
+    renderPlants(plants, 'plant-grid');
+    document.getElementById('cards-view').style.display = '';
+    document.getElementById('about').style.display = 'none';
+    document.getElementById('contact').style.display = 'none';
+    document.getElementById('favorites').style.display = 'none';
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') document.getElementById('plant-modal').style.display = 'none';
+    });
+    document.querySelector('#contact form').onsubmit = function(e) {
+      e.preventDefault();
+      alert('تم الإرسال بنجاح!');
+      this.reset();
+    };
+  </script>
+
+  <script src="scripts/arabe.js"></script>
+</body>
+</html>

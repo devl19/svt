@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exposition de Plantes et leur Anatomie</title>
+  <meta name="description" content="Découvrez une exposition interactive de plantes, leur anatomie, et des conseils d'entretien.">
+  <meta name="keywords" content="plantes, botanique, exposition, anatomie, fleurs, jardinage">
+  <link rel="icon" href="rdf.png" type="image/png">
+  <link rel="stylesheet" href="styles/main.css">
+
+  <style>
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px; }
+    .card { background: var(--card-bg, #fff); border-radius: 12px; box-shadow: 0 2px 8px #0001; padding: 12px; cursor: pointer; transition: transform .2s; }
+    .card:focus { outline: 2px solid #0078d4; }
+    .card img { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; }
+    .favorite { color: #e63946; font-size: 1.5em; cursor: pointer; float: right; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .modal { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#0008; align-items:center; justify-content:center; z-index:1000; }
+    .modal-content { background:#fff; border-radius:16px; padding:24px; max-width:400px; width:90%; position:relative; }
+    .modal-close { position:absolute; top:8px; right:12px; font-size:1.5em; cursor:pointer; background:none; border:none; }
+    body.dark { background:#181818; color:#eee; }
+    body.dark .card { background:#232323; }
+    body.dark .modal-content { background:#232323; color:#eee; }
+    .sr-only { position:absolute; left:-9999px; }
+    #nav{ justify-content: center; align-items: center; } 
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div style="display:flex; align-items:center; gap:16px;">
+        <img src="rdf.png" alt="Logo du site" style="height:80px; width:auto; border-radius:12px;">
+        <h1>Exposition de Plantes et leur Anatomie</h1>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button id="btn-mode" class="btn-mode" title="Mode sombre/clair" aria-label="Mode sombre/clair">🌙</button>
+        <button id="btn-arabe" class="btn-lang" aria-label="Version arabe">العربية</button>
+      </div>
+    </header>
+    <nav>
+      <a href="#cards-view">Accueil</a> |
+      <a href="#about">À propos</a> |
+      <a href="#favorites">Favoris</a>
+    </nav>
+    <section id="cards-view" class="page-background">
+      <h2>Recherchez une plante :</h2>
+      <form id="search-form" autocomplete="off" style="margin-bottom:12px;">
+        <label for="search-input" class="sr-only">Nom de la plante</label>
+        <input id="search-input" type="search" placeholder="Recherchez le nom de la plante..." aria-label="Recherchez le nom de la plante">
+        <select id="filter-type" aria-label="Filtrer par type">
+          <option value="exposition">Exposition</option>
+          <option value="anatomie">Anatomie</option>
+        </select>
+      </form>
+      <div class="grid" id="plant-grid">
+      </div>
+    </section>
+
+    <!-- Modale de détails -->
+    <div class="modal" id="plant-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-content">
+        <button class="modal-close" id="modal-close" aria-label="Fermer">×</button>
+        <h2 id="modal-title"></h2>
+        <img id="modal-img" src="" alt="" style="width:100%;border-radius:8px;">
+        <p id="modal-desc"></p>
+        <p><strong>Type :</strong> <span id="modal-type"></span></p>
+        <p><strong>Conseils :</strong> <span id="modal-tips"></span></p>
+      </div>
+    </div>
+
+    <!-- Favoris -->
+    <section id="favorites" class="page-background" style="display:none;">
+      <h2>Vos plantes favorites</h2>
+      <div class="grid" id="favorites-grid"></div>
+    </section>
+
+    <!-- À propos -->
+    <section id="about" class="page-background">
+      <h2>À propos</h2>
+      <p>Ce site présente une sélection de plantes et leur anatomie, pour découvrir la diversité du monde végétal et apprendre à mieux les entretenir.</p>
+    </section>
+
+    <!-- Contact -->
+    <section id="contact" class="page-background">
+      <h2>Contact</h2>
+      <form>
+        <label for="contact-name">Nom :</label>
+        <input id="contact-name" type="text" required>
+        <label for="contact-msg">Message :</label>
+        <textarea id="contact-msg" required></textarea>
+        <button type="submit">Envoyer</button>
+      </form>
+    </section>
+  </div>
+  <script>
+    const plants = [
+      { name: "Rose", img: "A.jpeg", type: "fleur", desc: "La rose est une fleur emblématique, symbole d'amour.", tips: "Arrosez régulièrement, aime le soleil." },
+      { name: "Tulipe", img: "T.jpeg", type: "fleur", desc: "La tulipe est une fleur printanière colorée.", tips: "Planter en automne, sol bien drainé." },
+      { name: "Orchidée", img: "E.jpeg", type: "fleur", desc: "L'orchidée est une plante élégante et délicate.", tips: "Évitez l'excès d'eau, lumière indirecte." },
+      { name: "Lys", img: "lys.jpeg", type: "fleur", desc: "Le lys est une fleur majestueuse et parfumée.", tips: "Sol riche, exposition ensoleillée." },
+      { name: "Marguerite", img: "marguerite.jpeg", type: "fleur", desc: "La marguerite symbolise l'innocence et la pureté.", tips: "Sol léger, exposition ensoleillée." },
+      { name: "Tournesol", img: "tournesol.jpeg", type: "fleur", desc: "Le tournesol suit la lumière du soleil.", tips: "Aime la chaleur, arroser modérément." },
+      { name: "Violette", img: "violette.jpeg", type: "fleur", desc: "La violette est une petite fleur délicate et parfumée.", tips: "Ombre partielle, sol humide." },
+      { name: "Pivoine", img: "pivoine.jpeg", type: "fleur", desc: "La pivoine est appréciée pour ses grandes fleurs parfumées.", tips: "Sol riche, arrosage modéré." },
+      { name: "Camélia", img: "camelia.jpeg", type: "fleur", desc: "Le camélia fleurit en hiver ou au printemps.", tips: "Sol acide, mi-ombre." },
+      { name: "Jasmin", img: "jasmin.jpeg", type: "fleur", desc: "Le jasmin est une plante grimpante très parfumée.", tips: "Aime la chaleur et la lumière." },
+      { name: "Lavande", img: "lavande.jpeg", type: "fleur", desc: "La lavande est une plante aromatique méditerranéenne.", tips: "Sol sec, plein soleil." },
+      { name: "Coquelicot", img: "coquelicot.jpeg", type: "fleur", desc: "Le coquelicot colore les champs de rouge au printemps.", tips: "Sol pauvre, exposition ensoleillée." },
+      { name: "Dahlia", img: "dahlia.jpeg", type: "fleur", desc: "Le dahlia offre une grande diversité de formes et de couleurs.", tips: "Planter après les gelées, plein soleil." },
+      { name: "Hibiscus", img: "hibiscus.jpeg", type: "fleur", desc: "L'hibiscus est une fleur tropicale spectaculaire.", tips: "Arrosage régulier, aime la chaleur." },
+      { name: "Anémone", img: "anemone.jpeg", type: "fleur", desc: "L'anémone est une fleur délicate de printemps ou d'automne.", tips: "Sol frais, mi-ombre." },
+      { name: "Iris", img: "iris.jpeg", type: "fleur", desc: "L'iris est une fleur élégante aux couleurs variées.", tips: "Sol bien drainé, soleil ou mi-ombre." },
+      { name: "Perce-neige", img: "perce_neige.jpeg", type: "fleur", desc: "Le perce-neige annonce la fin de l'hiver.", tips: "Sol humide, mi-ombre." },
+      { name: "Narcisse", img: "narcisse.jpeg", type: "fleur", desc: "Le narcisse illumine les jardins au printemps.", tips: "Planter en automne, aime le soleil." },
+      { name: "Azalée", img: "azalee.jpeg", type: "fleur", desc: "L'azalée offre une floraison abondante au printemps.", tips: "Sol acide, arrosage modéré." },
+      { name: "Cyclamen", img: "cyclamen.jpeg", type: "fleur", desc: "Le cyclamen fleurit en automne et en hiver.", tips: "Sol frais, ombre légère." },
+      { name: "Freesia", img: "freesia.jpeg", type: "fleur", desc: "Le freesia est apprécié pour son parfum délicat.", tips: "Sol léger, exposition ensoleillée." },
+      { name: "Glaïeul", img: "glaieul.jpeg", type: "fleur", desc: "Le glaïeul est apprécié pour ses longues hampes florales.", tips: "Sol léger, exposition ensoleillée." },
+      { name: "Hortensia", img: "hortensia.jpeg", type: "fleur", desc: "L'hortensia offre de grosses boules de fleurs colorées.", tips: "Sol acide, mi-ombre." },
+      { name: "Magnolia", img: "magnolia.jpeg", type: "fleur", desc: "Le magnolia fleurit magnifiquement au printemps.", tips: "Sol riche, exposition ensoleillée." },
+      { name: "Myosotis", img: "myosotis.jpeg", type: "fleur", desc: "Le myosotis est une petite fleur bleue symbolisant le souvenir.", tips: "Sol frais, mi-ombre." },
+      { name: "Primevère", img: "primevere.jpeg", type: "fleur", desc: "La primevère annonce le retour du printemps.", tips: "Sol humide, exposition ensoleillée ou mi-ombre." },
+      { name: "Renoncule", img: "renoncule.jpeg", type: "fleur", desc: "La renoncule offre des fleurs doubles très colorées.", tips: "Sol riche, arrosage régulier." }
+    ];
+    function renderPlants(list, gridId) {
+      const grid = document.getElementById(gridId);
+      grid.innerHTML = '';
+      const favs = getFavorites();
+      list.forEach((plant, i) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.tabIndex = 0;
+        card.setAttribute('data-index', i);
+        card.innerHTML = `
+          <span class="favorite" title="Ajouter aux favoris" aria-label="Favori" data-fav="${plant.name}">${favs.includes(plant.name) ? '★' : '☆'}</span>
+          <img src="${plant.img}" alt="${plant.name}">
+          <h2>${plant.name}</h2>
+        `;
+        card.onclick = () => showModal(plant);
+        card.onkeydown = e => { if (e.key === 'Enter') showModal(plant); };
+        card.querySelector('.favorite').onclick = (e) => {
+          e.stopPropagation();
+          toggleFavorite(plant.name);
+          renderPlants(list, gridId);
+        };
+        grid.appendChild(card);
+      });
+    }
+    document.getElementById('filter-type').onchange = function() {
+  const val = this.value;
+  if (val === "anatomie") {
+    window.location.href = "anatomie.html"; // Crée cette page pour l'anatomie
+  } else {
+    filterPlants(); // Affiche la page d'exposition (actuelle)
+  }
+};
+    function showModal(plant) {
+      document.getElementById('modal-title').textContent = plant.name;
+      document.getElementById('modal-img').src = plant.img;
+      document.getElementById('modal-img').alt = plant.name;
+      document.getElementById('modal-desc').textContent = plant.desc;
+      document.getElementById('modal-type').textContent = plant.type;
+      document.getElementById('modal-tips').textContent = plant.tips;
+      document.getElementById('plant-modal').style.display = 'flex';
+      document.getElementById('modal-close').focus();
+    }
+    document.getElementById('modal-close').onclick = () => {
+      document.getElementById('plant-modal').style.display = 'none';
+    };
+    window.onclick = e => {
+      if (e.target === document.getElementById('plant-modal')) {
+        document.getElementById('plant-modal').style.display = 'none';
+      }
+    };
+    function getFavorites() {
+      return JSON.parse(localStorage.getItem('favorites') || '[]');
+    }
+    function toggleFavorite(name) {
+      let favs = getFavorites();
+      if (favs.includes(name)) favs = favs.filter(f => f !== name);
+      else favs.push(name);
+      localStorage.setItem('favorites', JSON.stringify(favs));
+      renderFavorites();
+    }
+    function renderFavorites() {
+      const favs = getFavorites();
+      const favPlants = plants.filter(p => favs.includes(p.name));
+      renderPlants(favPlants, 'favorites-grid');
+    }
+    document.querySelectorAll('nav a').forEach(link => {
+      link.onclick = function(e) {
+        e.preventDefault();
+        document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+        if (this.getAttribute('href') === '#favorites') renderFavorites();
+        document.querySelector(this.getAttribute('href')).style.display = '';
+        window.scrollTo(0,0);
+      };
+    });
+    const modeBtn = document.getElementById('btn-mode');
+    function setMode(dark) {
+      document.body.classList.toggle('dark', dark);
+      modeBtn.textContent = dark ? '☀️' : '🌙';
+      localStorage.setItem('theme', dark ? 'dark' : 'light');
+    }
+    setMode(localStorage.getItem('theme') === 'dark');
+    modeBtn.onclick = () => setMode(!document.body.classList.contains('dark'));
+    document.getElementById('btn-arabe').onclick = function() {
+      window.location.href = 'arabic.html';
+    };
+    renderPlants(plants, 'plant-grid');
+    document.getElementById('cards-view').style.display = '';
+    document.getElementById('about').style.display = 'none';
+    document.getElementById('contact').style.display = 'none';
+    document.getElementById('favorites').style.display = 'none';
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') document.getElementById('plant-modal').style.display = 'none';
+    });
+    document.querySelector('#contact form').onsubmit = function(e) {
+      e.preventDefault();
+      alert('Message envoyé !');
+      this.reset();
+    };
+  </script>
+
+  <script src="scripts/main.js"></script>
+</body>
+</html>
